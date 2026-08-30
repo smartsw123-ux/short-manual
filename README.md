@@ -1,4 +1,4 @@
-# 장비 숏뉴얼 (Short-Manual) — 데모 배포
+# 장비 숏뉴얼 (Short-Manual) — 데모 배포 v1.1
 
 이 폴더( `web/` )가 배포 대상입니다. 안에 `index.html` 하나만 있으면 됩니다.
 
