@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>장비 숏뉴얼 (Short-Manual) · AI 매뉴얼 & 자동 A/S 티켓 시스템</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+    body { font-family: 'Inter', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
+    .font-mono, code, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(12px); } }
+    .toast-in { animation: toastIn .28s cubic-bezier(.16,1,.3,1) both; }
+    .toast-out { animation: toastOut .25s ease-in both; }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .modal-in { animation: modalIn .3s cubic-bezier(.16,1,.3,1) both; }
+    @keyframes scanline { 0% { top: 0; } 100% { top: 100%; } }
+    .scanline { animation: scanline 1.6s linear infinite; }
+    @keyframes growBar { from { width: 0; } }
+    .bar-anim { animation: growBar 1s cubic-bezier(.16,1,.3,1) both; }
+    @keyframes pingRow { 0% { background-color: rgba(244,63,94,.22); } 100% { background-color: transparent; } }
+    .row-ping { animation: pingRow 2.4s ease-out both; }
+    .blueprint { background-color:#0a1120; background-image:
+        linear-gradient(rgba(59,130,246,.14) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,.14) 1px, transparent 1px);
+        background-size: 20px 20px; }
+    .bp-node { border:1.5px solid rgba(148,163,184,.6); background:rgba(15,23,42,.75); }
+    .tab-active { background:#2563eb; color:#fff; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 selection:bg-blue-500/30">
+
+<!-- ══════════════════ HEADER ══════════════════ -->
+<header class="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+    <div class="flex items-center gap-3 min-w-0">
+        <span class="shrink-0 bg-gradient-to-br from-blue-500 to-indigo-600 text-white w-11 h-11 flex items-center justify-center rounded-xl text-lg font-bold shadow-lg shadow-blue-900/40"><i class="fas fa-helmet-safety"></i></span>
+        <div class="min-w-0">
+            <h1 class="text-lg md:text-xl lg:text-2xl font-extrabold tracking-tight text-white leading-snug">장비 숏뉴얼 <span class="text-blue-400">Short-Manual</span> <span class="text-slate-500 font-bold">·</span> 자동 A/S 티켓 시스템</h1>
+            <p class="text-slate-400 text-[11px] mt-0.5 leading-relaxed">차대번호(Chassis No.) 기반 정밀 매칭 · 계기판 OCR · 구조화 표/파츠 리스트 · 듀얼 매뉴얼 뷰어 · 미해결 건 자동 A/S 리포트</p>
+        </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2.5">
+        <span id="registered-badge" class="hidden px-3 py-1.5 bg-blue-500/10 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-semibold items-center gap-2">
+            <i class="fas fa-id-badge"></i> 등록 장비: <span id="badge-model" class="text-white font-bold">HB30-II</span> <span class="font-mono text-blue-400" id="badge-chassis">HB-CH-2026-9921</span>
+        </span>
+        <span class="px-3 py-1.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <i class="fas fa-circle text-[7px] animate-pulse"></i> B2B 엔터프라이즈 라이선스
+        </span>
+        <button onclick="toggleView()" id="view-toggle-btn" class="hidden px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg transition-all items-center gap-2">
+            <i class="fas fa-exchange-alt"></i> <span id="view-toggle-label">제조사 대시보드로 전환</span>
+        </button>
+        <button onclick="resetDemo()" id="reset-btn" class="hidden px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 transition-all items-center gap-2" title="등록 장비·티켓·업로드 기록을 모두 지우고 처음부터 다시 시작합니다">
+            <i class="fas fa-rotate-left"></i> 데모 초기화
+        </button>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto">
+
+    <!-- ══════════════════ STEP 0 : REGISTRATION ══════════════════ -->
+    <div id="registration-view" class="max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl my-4 md:my-8">
+        <div class="text-center mb-6">
+            <span class="bg-blue-600/20 text-blue-300 px-3 py-1 rounded-full text-xs font-bold border border-blue-500/30">STEP 0 · 장비 마스터 데이터 등록</span>
+            <h2 class="text-xl md:text-2xl font-bold text-white mt-3">차대번호(Serial / Chassis No.) 기반 매칭 시스템</h2>
+            <p class="text-slate-400 text-xs mt-1.5 leading-relaxed">정확한 매뉴얼 맵핑과 고장 로그 기록을 위해 현장 투입 장비 스펙을 입력하세요.<br>입력한 <span class="text-blue-300 font-semibold">차대번호</span>가 시스템의 핵심 키(Key)로 사용됩니다.</p>
+        </div>
+
+        <form id="equipment-form" onsubmit="handleRegistration(event)" class="space-y-4 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">장비 종류 <span class="text-blue-500">*</span></label>
+                    <select id="eq-type" required class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 transition-colors">
+                        <option value="유압식 굴착기">유압식 굴착기 (Excavator)</option>
+                        <option value="휠로더">휠로더 (Wheel Loader)</option>
+                        <option value="산업용 공기압축기">산업용 공기압축기 (Air Compressor)</option>
+                        <option value="지게차">지게차 (Forklift)</option>
+                        <option value="스키드로더">스키드 스티어 로더 (Skid Steer)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">제조사 (고객사) <span class="text-blue-500">*</span></label>
+                    <input type="text" id="eq-maker" required value="HB건설기계" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">장비 모델명 <span class="text-blue-500">*</span></label>
+                    <input type="text" id="eq-model" required value="HB30-II" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1 flex items-center gap-1.5">
+                        차대번호 (Chassis No.) <span class="text-blue-500">*</span>
+                        <span class="text-[9px] font-normal text-blue-400 bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-500/30">SYSTEM KEY</span>
+                    </label>
+                    <input type="text" id="eq-chassis" required value="HB-CH-2026-9921" class="w-full bg-slate-950 border border-blue-700/60 rounded-xl p-3 text-white font-mono tracking-wide focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">엔진 제조사 <span class="text-blue-500">*</span></label>
+                    <input type="text" id="engine-maker" required value="Cummins" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">엔진 모델명 <span class="text-blue-500">*</span></label>
+                    <input type="text" id="engine-model" required value="QSB4.5" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+            </div>
+
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3 text-[11px] text-slate-400 flex gap-2">
+                <i class="fas fa-circle-info text-blue-400 mt-0.5"></i>
+                <span>등록 즉시 해당 차대번호로 벡터화된 매뉴얼 라이브러리(유압/엔진/파츠 PDF)가 자동 연결되며, 이후 모든 질의응답·고장 로그·A/S 티켓이 이 시리얼 번호에 귀속되어 집계됩니다.</span>
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-900/30 transition-all text-sm mt-2 flex items-center justify-center gap-2">
+                <i class="fas fa-link"></i> 장비 등록 및 차대번호 정밀 매칭 시작
+            </button>
+        </form>
+    </div>
+
+    <!-- ══════════════════ VIEW 1 + 2 : OPERATOR + DUAL MANUAL ══════════════════ -->
+    <div id="operator-view" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- LEFT : MOBILE OPERATOR -->
+        <section class="lg:col-span-6 flex flex-col items-center">
+            <div class="w-full flex justify-between items-center mb-2 px-2">
+                <h2 class="text-sm font-bold text-slate-300 flex items-center gap-2">
+                    <i class="fas fa-mobile-screen-button text-blue-400"></i> VIEW 1 · 현장 운전원 모바일 화면
+                </h2>
+                <span class="text-[11px] text-blue-300 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-500/30"><i class="fas fa-check-circle mr-1"></i>차대번호 매칭 완료</span>
+            </div>
+
+            <!-- Phone Frame -->
+            <div class="w-full max-w-md h-[820px] bg-slate-950 border-[10px] border-slate-800 rounded-[3rem] shadow-2xl relative overflow-hidden flex flex-col">
+                <!-- notch -->
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-5 bg-slate-800 rounded-b-2xl z-30"></div>
+
+                <!-- Phone Header -->
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 pt-6 pb-3 flex items-center justify-between shadow-md z-20">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-robot text-sm"></i>
+                        <span id="phone-title" class="font-bold text-sm tracking-wide">HB30-II AI 어시스턴트</span>
+                    </div>
+                    <button onclick="simulateOCR()" id="ocr-btn" class="bg-white/15 hover:bg-white/25 px-2.5 py-1 rounded-lg text-xs font-semibold border border-white/25 flex items-center gap-1.5 transition-colors">
+                        <i class="fas fa-camera"></i> 계기판 OCR 스캔
+                    </button>
+                </div>
+
+                <!-- Chat Body -->
+                <div id="chat-body" class="flex-1 bg-slate-900 p-4 overflow-y-auto flex flex-col gap-4 text-xs scroll-smooth">
+
+                    <div class="text-center text-[10px] text-slate-500 my-0.5">오늘 현장 세션 연결됨 · 시리얼 <span id="chat-serial" class="font-mono text-slate-400">HB-CH-2026-9921</span></div>
+
+                    <!-- OCR camera viewport (hidden until scan) -->
+                    <div id="ocr-camera" class="hidden rounded-xl overflow-hidden border border-blue-500/40 relative bg-slate-950">
+                        <div class="h-40 relative flex items-center justify-center bg-gradient-to-br from-slate-900 to-black overflow-hidden">
+                            <!-- mock instrument cluster -->
+                            <div class="absolute inset-0 flex items-center justify-around opacity-70">
+                                <div class="w-16 h-16 rounded-full border-2 border-slate-600 flex items-center justify-center">
+                                    <div class="w-0.5 h-6 bg-emerald-400 origin-bottom -rotate-45"></div>
+                                </div>
+                                <div class="w-16 h-16 rounded-full border-2 border-slate-600 flex items-center justify-center relative">
+                                    <div class="w-0.5 h-6 bg-amber-400 origin-bottom rotate-[60deg]"></div>
+                                    <span class="absolute -bottom-1 text-[7px] text-amber-400 font-mono">TEMP</span>
+                                </div>
+                                <div class="flex flex-col gap-1 items-center">
+                                    <span class="px-1.5 py-0.5 bg-rose-600 text-white text-[8px] font-mono font-bold rounded animate-pulse">ERR-402</span>
+                                    <i class="fas fa-oil-can text-amber-400 text-xs"></i>
+                                </div>
+                            </div>
+                            <div class="absolute left-4 right-4 h-0.5 bg-blue-400/80 shadow-[0_0_12px_2px_rgba(96,165,250,.8)] scanline"></div>
+                            <div class="relative z-10 text-center bg-slate-950/60 rounded-lg px-3 py-1.5">
+                                <i class="fas fa-expand text-xl text-blue-300/70"></i>
+                                <p id="ocr-cam-status" class="text-[10px] text-blue-200 mt-1 font-mono">계기판 프레임 인식 중…</p>
+                            </div>
+                            <div class="absolute top-2 left-2 w-5 h-5 border-t-2 border-l-2 border-blue-400"></div>
+                            <div class="absolute top-2 right-2 w-5 h-5 border-t-2 border-r-2 border-blue-400"></div>
+                            <div class="absolute bottom-2 left-2 w-5 h-5 border-b-2 border-l-2 border-blue-400"></div>
+                            <div class="absolute bottom-2 right-2 w-5 h-5 border-b-2 border-r-2 border-blue-400"></div>
+                        </div>
+                    </div>
+
+                    <!-- OCR result banner -->
+                    <div id="ocr-simulation-banner" class="hidden bg-blue-950/80 border border-blue-500/40 p-3 rounded-xl text-blue-100">
+                        <div class="flex items-center gap-2 font-bold mb-1">
+                            <i class="fas fa-camera text-blue-300"></i> 카메라 OCR 인식 완료
+                        </div>
+                        <p class="text-[11px] text-slate-300">인식된 에러 코드: <span class="text-amber-400 font-mono font-bold">ERR-402</span> <span class="text-slate-400">(유압유 과열 및 압력 저하)</span></p>
+                        <p class="text-[10px] text-slate-400 mt-1">→ 아래 질문 입력창에 자동 반영되었습니다.</p>
+                    </div>
+
+                    <!-- User Question -->
+                    <div class="flex flex-col items-end gap-1">
+                        <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none max-w-[85%] shadow-sm leading-relaxed">
+                            계기판에 <strong id="user-err-code">ERR-402</strong> 경고등이 떴어. 조치 방법과 필요한 부품 알려줘.
+                        </div>
+                        <span class="text-[9px] text-slate-500 pr-1">운전원 · 방금</span>
+                    </div>
+
+                    <!-- AI Response -->
+                    <div class="flex flex-col items-start gap-1">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <div class="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400"><i class="fas fa-robot text-[10px]"></i></div>
+                            <span class="text-[11px] font-semibold text-slate-400">AI 숏뉴얼 자동 구조화 답변</span>
+                        </div>
+                        <div class="bg-slate-800 border border-slate-700 text-slate-200 p-3.5 rounded-2xl rounded-tl-none max-w-[97%] shadow-sm space-y-3 w-full">
+                            <p class="font-medium text-slate-100 leading-relaxed">등록된 장비 스펙(<span id="chat-spec-info" class="text-blue-300">HB30-II / Cummins QSB4.5</span>) 매뉴얼 <span class="font-mono text-blue-400" id="chat-match-file">hb30_hydraulic_v2.pdf</span> P.142 분석 결과입니다.</p>
+
+                            <div class="text-[11px] text-slate-300 bg-slate-900/60 rounded-lg p-2.5 border border-slate-700/60 leading-relaxed">
+                                <span class="text-amber-400 font-bold">요약 ·</span> ERR-402는 유압유 온도 85℃ 초과 + 릴리프 압력 저하 복합 경고입니다. 즉시 부하를 낮추고 <b>릴리프 밸브 세척 / 오일 쿨러 핀 청소 / 유압 필터 교체</b>를 순서대로 진행하세요.
+                            </div>
+
+                            <!-- Structured Markdown Table -->
+                            <div>
+                                <p class="text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-wider">점검 체크리스트</p>
+                                <div class="overflow-x-auto rounded-lg border border-slate-700">
+                                    <table class="w-full text-left text-[11px]">
+                                        <thead class="bg-slate-700/60 text-slate-300">
+                                            <tr>
+                                                <th class="p-2 font-semibold">점검 항목</th>
+                                                <th class="p-2 font-semibold">정상 기준</th>
+                                                <th class="p-2 font-semibold">조치 사항</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-700/50 text-slate-300">
+                                            <tr><td class="p-2 font-medium text-white">유압유 온도</td><td class="p-2">≤ 85 ℃</td><td class="p-2 text-amber-300">부하 중단 · 냉각 대기</td></tr>
+                                            <tr><td class="p-2 font-medium text-white">릴리프 압력</td><td class="p-2">250 bar ± 5</td><td class="p-2 text-amber-300">밸브 세척 · 압력 재조정</td></tr>
+                                            <tr><td class="p-2 font-medium text-white">라디에이터 / 쿨러 핀</td><td class="p-2">이물질 0%</td><td class="p-2 text-emerald-300">에어건으로 먼지 청소</td></tr>
+                                            <tr><td class="p-2 font-medium text-white">유압 필터 차압</td><td class="p-2">≤ 1.5 bar</td><td class="p-2 text-rose-300">필터 신품 교체</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Parts List -->
+                            <div class="bg-slate-900/90 border border-emerald-500/30 p-2.5 rounded-xl">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <span class="font-bold text-emerald-400 text-[11px] flex items-center gap-1.5"><i class="fas fa-boxes-stacked"></i> 교체 필요 부품 리스트 (Parts List)</span>
+                                    <button onclick="copyPartsList()" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-semibold flex items-center gap-1"><i class="fas fa-copy"></i> 발주서 복사</button>
+                                </div>
+                                <div class="overflow-x-auto rounded border border-slate-800">
+                                    <table class="w-full text-left text-[11px]">
+                                        <thead class="bg-slate-800/70 text-slate-400"><tr><th class="p-1.5 font-semibold">부품명</th><th class="p-1.5 font-semibold">Part No.</th><th class="p-1.5 font-semibold text-right">수량</th></tr></thead>
+                                        <tbody id="parts-tbody" class="divide-y divide-slate-800 text-slate-300">
+                                            <tr><td class="p-1.5">메인 유압 필터</td><td class="p-1.5 font-mono text-emerald-300">14Y-60-11210</td><td class="p-1.5 text-right text-white font-bold">1</td></tr>
+                                            <tr><td class="p-1.5">오일 쿨러 씰링 가스켓</td><td class="p-1.5 font-mono text-emerald-300">07001-02012</td><td class="p-1.5 text-right text-white font-bold">2</td></tr>
+                                            <tr><td class="p-1.5">릴리프 밸브 리페어 키트</td><td class="p-1.5 font-mono text-emerald-300">723-40-56102</td><td class="p-1.5 text-right text-white font-bold">1</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Visual Video Request -->
+                            <button onclick="triggerVisual()" id="visual-btn" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow transition-all flex items-center justify-center gap-2 text-xs">
+                                <i class="fas fa-clapperboard"></i> 쿨러 점검 부위 시각화 비디오 요청
+                            </button>
+
+                            <div id="mini-video-box" class="hidden">
+                                <div id="video-loading" class="w-full h-28 bg-slate-950 rounded-xl flex items-center justify-center border border-slate-700 text-[10px] text-slate-400 gap-2">
+                                    <i class="fas fa-spinner fa-spin text-blue-400"></i> 숏폼 렌더링 중…
+                                </div>
+                                <div id="video-player" class="hidden w-full bg-slate-950 rounded-xl border border-slate-700 overflow-hidden">
+                                    <div class="h-32 relative flex items-center justify-center blueprint">
+                                        <div class="absolute inset-0 flex items-center justify-center opacity-40">
+                                            <i class="fas fa-fan fa-spin text-4xl text-slate-500" style="animation-duration:3s"></i>
+                                        </div>
+                                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent"></div>
+                                        <button onclick="playShort(this)" class="relative z-10 w-11 h-11 rounded-full bg-blue-600/90 hover:bg-blue-500 flex items-center justify-center text-white shadow-lg"><i class="fas fa-play text-sm ml-0.5"></i></button>
+                                        <span class="absolute bottom-1.5 left-1.5 z-10 text-[9px] bg-slate-900/90 px-1.5 py-0.5 rounded text-slate-300">3초 숏폼 · 오일 쿨러 핀 청소 시연</span>
+                                    </div>
+                                    <div class="h-1 bg-slate-800"><div id="video-progress" class="h-full bg-blue-500 w-0 transition-all duration-[3000ms] ease-linear"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="text-[9px] text-slate-500 pl-1">AI · 응답시간 1.2s · 신뢰도 96%</span>
+                    </div>
+
+                    <!-- Feedback / Auto Trouble Ticket -->
+                    <div id="feedback-box" class="bg-slate-800/50 border border-slate-800 p-2.5 rounded-xl flex flex-col gap-2 text-[11px] text-slate-400">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <span>이 정보가 도움이 되었나요?</span>
+                            <div class="flex gap-2">
+                                <button onclick="recordFeedback('yes')" class="px-2.5 py-1 bg-slate-700 hover:bg-emerald-600/30 hover:text-emerald-400 rounded transition-colors"><i class="fas fa-thumbs-up"></i> 👍 해결 완료</button>
+                                <button onclick="recordFeedback('no')" class="px-2.5 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 hover:bg-rose-600/30 rounded transition-colors"><i class="fas fa-thumbs-down"></i> 👎 해결 불가</button>
+                            </div>
+                        </div>
+                        <button onclick="recordFeedback('no')" class="w-full mt-1 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-colors">
+                            <i class="fas fa-headset"></i> 제조사 정비 요청 (A/S 긴급 접수)
+                        </button>
+                    </div>
+
+                    <!-- ticket confirmation slot -->
+                    <div id="ticket-confirm-slot"></div>
+                </div>
+
+                <div class="h-1 bg-slate-700 w-1/3 mx-auto rounded-full my-2.5"></div>
+            </div>
+        </section>
+
+        <!-- RIGHT : DUAL MANUAL VIEWER -->
+        <section class="lg:col-span-6 flex flex-col gap-4">
+            <div class="flex justify-between items-center px-2">
+                <h2 class="text-sm font-bold text-slate-300 flex items-center gap-2"><i class="far fa-file-pdf text-rose-400"></i> VIEW 2 · 매뉴얼 원본 듀얼 뷰어</h2>
+                <span class="text-xs text-slate-400 bg-slate-900 px-2.5 py-1 rounded-md border border-slate-800">실시간 차대번호 매칭</span>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                <div class="flex flex-wrap justify-between items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
+                    <div>
+                        <span class="text-slate-400">연동 매뉴얼:</span>
+                        <span class="font-semibold text-white ml-1.5"><i class="far fa-file-pdf text-rose-400 mr-1"></i><span id="manual-file-name">hb30_hydraulic_v2.pdf</span></span>
+                    </div>
+                    <div class="bg-blue-600/20 text-blue-300 px-2.5 py-1 rounded border border-blue-500/30 font-bold">
+                        매칭 페이지: <span id="page-num-display" class="underline">P.142 · CH.7 유압계통</span>
+                    </div>
+                </div>
+
+                <div class="w-full h-[660px] bg-slate-950 rounded-xl border border-slate-800 p-6 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-slate-800 text-slate-400 px-4 py-2 rounded-bl-xl text-xs font-mono">SERIAL_ID: <span id="doc-id-label">HB-CH-2026-9921</span></div>
+
+                    <div class="space-y-4 text-xs z-10 text-slate-300">
+                        <div class="border-b border-slate-800 pb-3">
+                            <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Maintenance &amp; Troubleshooting</p>
+                            <h3 class="text-base font-bold text-white mt-1">7.4 유압유 과열 및 릴리프 밸브 점검 도면</h3>
+                        </div>
+                        <p class="leading-relaxed text-slate-300">장비 가동 중 유압유 온도가 85℃를 초과할 경우, 시스템 보호를 위해 즉시 부하를 중단하고 아래 도면에 명시된 릴리프 밸브(V-2 실린더)와 오일 쿨러 핀의 오염 상태를 점검해야 한다.</p>
+
+                        <div class="w-full h-60 blueprint border border-slate-800 rounded-xl relative overflow-hidden">
+                            <span class="absolute top-2 left-3 text-[9px] text-slate-500 font-mono uppercase tracking-widest">Fig. 14.2</span>
+                            <span id="schematic-label" class="absolute top-2 right-3 text-[9px] text-slate-500 font-mono">HB30-II Hydraulic System Schematic</span>
+
+                            <!-- connector lines -->
+                            <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                <polyline points="18,72 18,50 40,50" fill="none" stroke="rgba(148,163,184,.55)" stroke-width="0.6"></polyline>
+                                <polyline points="60,50 82,50 82,30" fill="none" stroke="rgba(148,163,184,.55)" stroke-width="0.6"></polyline>
+                                <polyline points="50,42 50,24 78,24" fill="none" stroke="rgba(251,191,36,.7)" stroke-width="0.7"></polyline>
+                            </svg>
+
+                            <!-- component nodes -->
+                            <div class="bp-node absolute rounded-md px-2 py-1 text-[9px] text-slate-300 font-mono" style="left:6%;top:62%;">유압 펌프<div class="text-[8px] text-slate-500">P-1</div></div>
+                            <div class="bp-node absolute rounded-md px-2 py-1 text-[9px] text-slate-300 font-mono" style="left:74%;top:16%;">오일 쿨러<div class="text-[8px] text-slate-500">C-1</div></div>
+                            <div class="bp-node absolute rounded-md px-2 py-1 text-[9px] text-slate-300 font-mono" style="left:74%;bottom:16%;">액추에이터<div class="text-[8px] text-slate-500">A-3</div></div>
+
+                            <!-- AI-highlighted relief valve -->
+                            <div class="absolute z-20 border-2 border-amber-400 rounded-md bg-amber-400/10 animate-pulse flex items-center justify-center" style="left:38%;top:38%;width:24%;height:22%;">
+                                <span class="text-[9px] text-amber-200 font-mono font-bold text-center leading-tight">릴리프 밸브<br>V-2</span>
+                                <span class="absolute -top-4 left-0 text-[8px] bg-amber-400 text-slate-950 px-1 rounded font-bold whitespace-nowrap">AI HIGHLIGHT</span>
+                            </div>
+
+                            <span class="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-blue-300 bg-blue-950/90 px-2 py-0.5 rounded border border-blue-500/30 z-10 whitespace-nowrap">AI가 릴리프 밸브(V-2) 영역을 실시간 하이라이트했습니다</span>
+                        </div>
+
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800 text-[11px] space-y-1">
+                            <p class="font-bold text-white"><i class="fas fa-triangle-exclamation text-amber-400 mr-1"></i> 정비 시 주의사항</p>
+                            <p class="text-slate-400">부품 교체 시 반드시 제조사 순정 품번(14Y-60-11210) 외 대체품 사용을 금하며, 압력 조절 후 반드시 실기동 테스트를 거쳐야 합니다.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center text-[11px] text-slate-500 pt-3 border-t border-slate-800 z-10">
+                        <span id="footer-eq-name">HB30-II Operation &amp; Maintenance Manual</span>
+                        <span class="font-bold text-white">142 / 320 페이지</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ══════════════════ VIEW 3 : MANUFACTURER DASHBOARD ══════════════════ -->
+    <div id="dashboard-view" class="hidden grid grid-cols-1 gap-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 border-b border-slate-800 gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2"><i class="fas fa-industry text-blue-400"></i> <span id="dash-maker-name">HB건설기계</span> B2B 대시보드 · 자동 A/S 티켓 시스템</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">구독 플랜: 엔터프라이즈 파트너 패키지 · 차대번호 기반 다중 매뉴얼 연동</p>
+                </div>
+                <button onclick="openUploadModal()" class="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg transition-all flex items-center gap-2">
+                    <i class="fas fa-file-arrow-up"></i> 신규 매뉴얼 PDF 다중 업로드
+                </button>
+            </div>
+
+            <!-- KPI -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <p class="text-xs text-slate-400 font-medium mb-1"><i class="fas fa-comments mr-1 text-blue-400"></i> 이번 달 누적 현장 질문</p>
+                    <p class="text-3xl font-extrabold text-blue-400"><span id="kpi-questions">342</span> <span class="text-xs font-normal text-slate-400">건</span></p>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-emerald-500/30">
+                    <p class="text-xs text-emerald-400 font-medium mb-1"><i class="fas fa-shield-halved mr-1"></i> AI 자체 해결률 (A/S 방어율)</p>
+                    <p class="text-3xl font-extrabold text-emerald-400"><span id="kpi-defense">92</span>% <span class="text-xs font-normal text-slate-400">(<span id="kpi-defense-cnt">315</span>건)</span></p>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-rose-500/30">
+                    <p class="text-xs text-rose-400 font-medium mb-1"><i class="fas fa-truck-medical mr-1"></i> 긴급 A/S 접수 대기</p>
+                    <p class="text-3xl font-extrabold text-rose-400"><span id="ticket-count-badge">1</span> <span class="text-xs font-normal text-slate-400">건 (처리 필요)</span></p>
+                </div>
+            </div>
+
+            <!-- Trouble Tickets -->
+            <div class="bg-slate-950 p-5 rounded-xl border border-rose-500/30">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-sm text-rose-400 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> A/S 긴급 정비 요청서 (Trouble Tickets)</h3>
+                    <span class="text-[11px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800"><i class="fas fa-circle text-[6px] text-rose-400 animate-pulse mr-1"></i>실시간 연동</span>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
+                    <table class="w-full text-left text-xs min-w-[640px]">
+                        <thead class="bg-slate-900 text-slate-400">
+                            <tr>
+                                <th class="p-2.5 font-semibold">티켓 ID</th>
+                                <th class="p-2.5 font-semibold">장비 모델</th>
+                                <th class="p-2.5 font-semibold">차대번호 (Serial No.)</th>
+                                <th class="p-2.5 font-semibold">미해결 에러</th>
+                                <th class="p-2.5 font-semibold">시도한 조치</th>
+                                <th class="p-2.5 font-semibold">접수 시간</th>
+                                <th class="p-2.5 font-semibold text-right">출동 상태</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ticket-tbody" class="divide-y divide-slate-900 text-slate-300"></tbody>
+                    </table>
+                </div>
+                <p id="ticket-empty" class="hidden text-center text-[11px] text-slate-500 py-4">현재 대기 중인 긴급 A/S 요청이 없습니다. AI 방어율 100%</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Fault Logs -->
+                <div class="lg:col-span-7 bg-slate-950 p-5 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                        <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2"><i class="fas fa-clipboard-list text-blue-400"></i> 장비별 누적 고장 에러 로그 (Fault Logs)</h3>
+                        <span class="text-[11px] text-slate-400 bg-slate-900 px-2.5 py-0.5 rounded border border-slate-800">시리얼별 집계</span>
+                    </div>
+                    <div class="overflow-x-auto rounded-lg border border-slate-800">
+                        <table class="w-full text-left text-xs min-w-[520px]">
+                            <thead class="bg-slate-900 text-slate-400">
+                                <tr>
+                                    <th class="p-2.5 font-semibold">장비 모델</th>
+                                    <th class="p-2.5 font-semibold">에러코드</th>
+                                    <th class="p-2.5 font-semibold">고장 부위</th>
+                                    <th class="p-2.5 font-semibold text-center">발생 건수</th>
+                                    <th class="p-2.5 font-semibold text-right">상태</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fault-tbody" class="divide-y divide-slate-900 text-slate-300">
+                                <tr><td class="p-2.5 font-medium text-white">HB30-II</td><td class="p-2.5 font-mono text-amber-400">ERR-402</td><td class="p-2.5">유압 릴리프 밸브 / 쿨러</td><td class="p-2.5 text-center font-bold">142</td><td class="p-2.5 text-right"><span class="px-2 py-0.5 bg-rose-500/20 text-rose-400 rounded text-[10px]">주의(High)</span></td></tr>
+                                <tr><td class="p-2.5 font-medium text-white">HB30-II</td><td class="p-2.5 font-mono text-amber-400">ERR-108</td><td class="p-2.5">엔진 연료 필터</td><td class="p-2.5 text-center font-bold">88</td><td class="p-2.5 text-right"><span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">보통(Mid)</span></td></tr>
+                                <tr><td class="p-2.5 font-medium text-white">HB30-II</td><td class="p-2.5 font-mono text-amber-400">ERR-231</td><td class="p-2.5">전기 하네스 / 센서</td><td class="p-2.5 text-center font-bold">37</td><td class="p-2.5 text-right"><span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px]">양호(Low)</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Part Breakdown Bars -->
+                <div class="lg:col-span-5 bg-slate-950 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2 mb-4"><i class="fas fa-chart-simple text-emerald-400"></i> 부위별 고장 집중도 (R&amp;D 피드백)</h3>
+                        <div class="space-y-3.5 text-xs">
+                            <div>
+                                <div class="flex justify-between mb-1"><span class="text-slate-300 font-medium"><i class="fas fa-water text-blue-400 mr-1.5"></i>유압 계통 (밸브/쿨러/필터)</span><span class="text-white font-bold">48% (164)</span></div>
+                                <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-800"><div class="bg-blue-600 h-full rounded-full bar-anim" style="width:48%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1"><span class="text-slate-300 font-medium"><i class="fas fa-fire text-amber-400 mr-1.5"></i>엔진 및 연료 계통</span><span class="text-white font-bold">32% (110)</span></div>
+                                <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-800"><div class="bg-amber-500 h-full rounded-full bar-anim" style="width:32%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1"><span class="text-slate-300 font-medium"><i class="fas fa-bolt text-purple-400 mr-1.5"></i>전기 / 센서 / 기타</span><span class="text-white font-bold">20% (68)</span></div>
+                                <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-800"><div class="bg-purple-500 h-full rounded-full bar-anim" style="width:20%"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-400 mt-4">
+                        <span class="font-bold text-emerald-400">💡 설계 인사이트:</span> 유압 계통 고장 비중(48%)이 가장 높습니다. 차기 모델 설계 시 릴리프 밸브 내구성 강화 및 쿨러 용량 증대를 검토하세요.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manual Library -->
+            <div class="space-y-3">
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                    <h3 class="font-bold text-sm text-slate-200"><i class="fas fa-book text-rose-400 mr-1.5"></i>다중 매뉴얼 라이브러리 · 차대번호(Serial) 매핑 관리</h3>
+                    <span class="text-xs text-slate-400">여러 권의 PDF 동시 등록 가능</span>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
+                    <table class="w-full text-left text-xs min-w-[680px]">
+                        <thead>
+                            <tr class="bg-slate-900 text-slate-400 border-b border-slate-800">
+                                <th class="p-3 font-semibold">장비 모델명</th>
+                                <th class="p-3 font-semibold">매핑된 차대번호 (Serial No.)</th>
+                                <th class="p-3 font-semibold">업로드된 매뉴얼 PDF (다중)</th>
+                                <th class="p-3 font-semibold">벡터화 상태</th>
+                                <th class="p-3 font-semibold text-right">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="library-tbody" class="divide-y divide-slate-900">
+                            <tr class="hover:bg-slate-900/50 transition-colors align-top">
+                                <td id="lib-model" class="p-3 font-medium text-white">HB30-II (유압식 굴착기)</td>
+                                <td id="lib-chassis" class="p-3 font-mono text-blue-400">HB-CH-2026-9921</td>
+                                <td class="p-3 text-slate-300">
+                                    <div id="lib-files" class="flex flex-col gap-1">
+                                        <span><i class="far fa-file-pdf text-rose-400 mr-1"></i>hb30_hydraulic_v2.pdf</span>
+                                        <span><i class="far fa-file-pdf text-rose-400 mr-1"></i>cummins_qsb4.5_parts.pdf</span>
+                                    </div>
+                                </td>
+                                <td class="p-3"><span id="lib-status" class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px] font-bold">동기화 완료 (2권)</span></td>
+                                <td class="p-3 text-right"><button onclick="openUploadModal()" class="text-slate-400 hover:text-white px-2 py-1 bg-slate-900 rounded border border-slate-800">관리</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+<!-- ══════════════════ TOAST CONTAINER ══════════════════ -->
+<div id="toast-wrap" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 items-end"></div>
+
+<!-- ══════════════════ MODAL ══════════════════ -->
+<div id="modal-overlay" class="hidden fixed inset-0 z-[90] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div id="modal-card" class="modal-in bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+            <h3 id="modal-title" class="font-bold text-white text-sm flex items-center gap-2"></h3>
+            <button onclick="closeModal()" class="text-slate-500 hover:text-white transition-colors"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div id="modal-body" class="p-5 text-xs text-slate-300 max-h-[70vh] overflow-y-auto"></div>
+        <div id="modal-footer" class="px-5 py-4 border-t border-slate-800 flex justify-end gap-2"></div>
+    </div>
+</div>
+
+<script>
+/* ═══════════ STATE + PERSISTENCE (localStorage) ═══════════ */
+const STORE_KEY = 'sm_state_v1';
+const FAULT_BASE = { 'ERR-402': 142, 'ERR-108': 88, 'ERR-231': 37 };
+const attemptedActions = ['릴리프 밸브 세척', '오일 쿨러 핀 청소', '유압 필터 교체'];
+
+let registeredEquipment = {
+    type:'유압식 굴착기', maker:'HB건설기계', model:'HB30-II', chassis:'HB-CH-2026-9921',
+    engineMaker:'Cummins', engineModel:'QSB4.5'
+};
+let feedbackLocked = false;
+let ocrDone = false;
+
+// persisted app state
+let state = {
+    equipment: null,          // null → STEP 0 화면 표시
+    tickets: [],              // {id, model, chassis, err, attempted, time, done, seed}
+    extraFiles: [],           // 업로드로 추가된 매뉴얼 파일명
+    feedback: null            // 'yes' | 'no' | null
+};
+
+function loadState(){
+    try {
+        const raw = localStorage.getItem(STORE_KEY);
+        if(raw){ state = Object.assign(state, JSON.parse(raw)); }
+    } catch(e){ /* 프라이빗 모드 등 → 메모리 상태로만 동작 */ }
+    // 최초 1회: 데모용 시드 티켓 주입
+    if(!state.tickets || state.tickets.length === 0){
+        state.tickets = [{
+            id:'TK-20260830-001', model:'HB30-II', chassis:'HB-CH-2026-9921',
+            err:'ERR-402', attempted:'밸브 세척 · 쿨러 청소 후 재발', time:'오늘 11:45',
+            done:false, seed:true
+        }];
+    }
+}
+function saveState(){
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch(e){ /* 저장 불가 환경 → 무시 */ }
+}
+function resetDemo(){
+    showModal({
+        title:'<i class="fas fa-rotate-left text-slate-300"></i> 데모 초기화',
+        body:'<p class="text-slate-400 leading-relaxed">등록한 장비 정보, 생성된 A/S 티켓, 업로드한 매뉴얼 목록을 <b class="text-white">모두 삭제</b>하고 처음(STEP 0)부터 다시 시작합니다.<br>계속할까요?</p>',
+        actions:[
+            {label:'취소', primary:false, fn:'closeModal()'},
+            {label:'초기화하고 새로고침', primary:true, fn:'doResetDemo()'}
+        ]
+    });
+}
+function doResetDemo(){
+    try { localStorage.removeItem(STORE_KEY); } catch(e){}
+    location.reload();
+}
+
+/* ═══════════ TOAST ═══════════ */
+function toast(msg, type='info'){
+    const map = {
+        info:{ic:'fa-circle-info', c:'border-blue-500/40 text-blue-200', bg:'bg-blue-950/90'},
+        success:{ic:'fa-circle-check', c:'border-emerald-500/40 text-emerald-200', bg:'bg-emerald-950/90'},
+        warn:{ic:'fa-triangle-exclamation', c:'border-amber-500/40 text-amber-200', bg:'bg-amber-950/90'},
+        error:{ic:'fa-circle-exclamation', c:'border-rose-500/40 text-rose-200', bg:'bg-rose-950/90'}
+    };
+    const s = map[type] || map.info;
+    const el = document.createElement('div');
+    el.className = `toast-in ${s.bg} ${s.c} border rounded-xl px-4 py-3 text-xs shadow-2xl max-w-xs flex items-start gap-2.5 backdrop-blur`;
+    el.innerHTML = `<i class="fas ${s.ic} mt-0.5"></i><span class="leading-relaxed">${msg}</span>`;
+    document.getElementById('toast-wrap').appendChild(el);
+    setTimeout(()=>{ el.classList.remove('toast-in'); el.classList.add('toast-out'); setTimeout(()=>el.remove(), 260); }, 3600);
+}
+
+/* ═══════════ MODAL ═══════════ */
+function showModal({title, body, actions}){
+    document.getElementById('modal-title').innerHTML = title;
+    document.getElementById('modal-body').innerHTML = body;
+    const f = document.getElementById('modal-footer');
+    f.innerHTML = '';
+    (actions || [{label:'닫기', primary:true, fn:'closeModal()'}]).forEach(a=>{
+        const b = document.createElement('button');
+        b.className = a.primary
+            ? 'px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition-colors'
+            : 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors';
+        b.innerHTML = a.label;
+        b.setAttribute('onclick', a.fn || 'closeModal()');
+        f.appendChild(b);
+    });
+    const ov = document.getElementById('modal-overlay');
+    ov.classList.remove('hidden');
+    document.getElementById('modal-card').classList.remove('modal-in');
+    void document.getElementById('modal-card').offsetWidth;
+    document.getElementById('modal-card').classList.add('modal-in');
+}
+function closeModal(){ document.getElementById('modal-overlay').classList.add('hidden'); }
+document.getElementById('modal-overlay').addEventListener('click', e=>{ if(e.target.id==='modal-overlay') closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+/* ═══════════ IMG FALLBACK ═══════════ */
+function imgFallback(img){
+    img.onerror = null;
+    img.style.display = 'none';
+    const p = img.parentElement;
+    if(p && !p.querySelector('.img-ph')){
+        const ph = document.createElement('div');
+        ph.className = 'img-ph absolute inset-0 flex items-center justify-center bg-slate-800 text-slate-600';
+        ph.innerHTML = '<i class="fas fa-image text-2xl"></i>';
+        p.appendChild(ph);
+    }
+}
+
+/* ═══════════ STEP 0 : REGISTRATION ═══════════ */
+function handleRegistration(event){
+    event.preventDefault();
+    const E = {
+        type: eqval('eq-type'), maker: eqval('eq-maker'), model: eqval('eq-model'),
+        chassis: eqval('eq-chassis'), engineMaker: eqval('engine-maker'), engineModel: eqval('engine-model')
+    };
+    if(!E.chassis.trim()){ toast('차대번호(Chassis No.)는 필수 입력입니다.', 'error'); return; }
+
+    state.equipment = E;
+    state.feedback = null;
+    saveState();
+    applyEquipment(E);
+    goToOperator();
+    toast(`장비 등록 완료 · 차대번호 <b>${E.chassis}</b> 로 매뉴얼 2권이 정밀 매칭되었습니다.`, 'success');
+}
+
+// 등록된 장비 정보를 화면 곳곳에 주입 (등록 시 / 새로고침 복원 시 공통)
+function applyEquipment(E){
+    registeredEquipment = E;
+    const slug = (E.model || 'model').toLowerCase().replace(/[^a-z0-9]+/g,'') || 'model';
+    const eslug = (E.engineModel || 'engine').toLowerCase().replace(/[^a-z0-9]+/g,'') || 'engine';
+    const hydFile = `${slug}_hydraulic_v2.pdf`;
+    const partFile = `${(E.engineMaker||'engine').toLowerCase()}_${eslug}_parts.pdf`;
+
+    setText('badge-model', E.model);
+    setText('badge-chassis', E.chassis);
+    ['registered-badge','view-toggle-btn','reset-btn'].forEach(id=>{
+        const el = document.getElementById(id);
+        el.classList.remove('hidden'); el.classList.add('flex');
+    });
+
+    setText('phone-title', `${E.model} AI 어시스턴트`);
+    setText('chat-serial', E.chassis);
+    setText('chat-spec-info', `${E.model} / ${E.engineMaker} ${E.engineModel}`);
+    setText('chat-match-file', hydFile);
+    setText('manual-file-name', hydFile);
+    setText('doc-id-label', E.chassis);
+    setText('schematic-label', `${E.model} Hydraulic Schematic`);
+    setText('footer-eq-name', `${E.model} Operation & Maintenance Manual`);
+
+    setText('dash-maker-name', E.maker);
+    setText('lib-model', `${E.model} (${E.type})`);
+    setText('lib-chassis', E.chassis);
+    renderLibraryFiles([hydFile, partFile]);
+}
+function goToOperator(){
+    document.getElementById('registration-view').classList.add('hidden');
+    document.getElementById('operator-view').classList.remove('hidden');
+    document.getElementById('operator-view').classList.add('grid');
+    document.getElementById('dashboard-view').classList.add('hidden');
+}
+function eqval(id){ return document.getElementById(id).value; }
+function setText(id, t){ const el = document.getElementById(id); if(el) el.innerText = t; }
+
+/* ═══════════ RENDER : 매뉴얼 라이브러리 파일 목록 ═══════════ */
+function renderLibraryFiles(baseFiles){
+    const box = document.getElementById('lib-files');
+    const all = [...baseFiles.map(n=>({name:n,isNew:false})), ...state.extraFiles.map(n=>({name:n,isNew:true}))];
+    box.innerHTML = all.map(f =>
+        `<span><i class="far fa-file-pdf text-rose-400 mr-1"></i>${escapeHtml(f.name)}${f.isNew ? ' <span class="text-emerald-400 text-[9px]">(신규)</span>' : ''}</span>`
+    ).join('');
+    setText('lib-status', `동기화 완료 (${all.length}권)`);
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ═══════════ RENDER : A/S 티켓 테이블 ═══════════ */
+function renderTickets(pingId){
+    const tb = document.getElementById('ticket-tbody');
+    tb.innerHTML = state.tickets.map(t => `
+        <tr data-ticket="${t.id}" data-done="${t.done ? 1 : 0}" class="${t.id === pingId ? 'row-ping' : ''}">
+            <td class="p-2.5 font-mono text-slate-400">${t.id}</td>
+            <td class="p-2.5 font-medium text-white">${escapeHtml(t.model)}</td>
+            <td class="p-2.5 font-mono text-slate-300">${escapeHtml(t.chassis)}</td>
+            <td class="p-2.5 text-amber-400 font-mono">${escapeHtml(t.err)}</td>
+            <td class="p-2.5 text-slate-400">${escapeHtml(t.attempted)}</td>
+            <td class="p-2.5 text-slate-400">${escapeHtml(t.time)}</td>
+            <td class="p-2.5 text-right">${ t.done
+                ? '<span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px] font-bold"><i class="fas fa-check mr-1"></i>출동 지시 완료 (AS팀 매칭)</span>'
+                : `<button onclick="dispatchEngineer('${t.id}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold text-[10px]">엔지니어 출동 지시</button>` }
+            </td>
+        </tr>`).join('');
+    refreshCounts();
+    renderFaultLogs();
+}
+function renderFaultLogs(){
+    const tb = document.getElementById('fault-tbody');
+    const rows = [
+        { code:'ERR-402', part:'유압 릴리프 밸브 / 쿨러', tag:'주의(High)', cls:'bg-rose-500/20 text-rose-400' },
+        { code:'ERR-108', part:'엔진 연료 필터',        tag:'보통(Mid)',  cls:'bg-amber-500/20 text-amber-400' },
+        { code:'ERR-231', part:'전기 하네스 / 센서',     tag:'양호(Low)',  cls:'bg-emerald-500/20 text-emerald-400' }
+    ];
+    const model = state.equipment ? state.equipment.model : 'HB30-II';
+    tb.innerHTML = rows.map(r => {
+        const extra = state.tickets.filter(t => !t.seed && t.err === r.code).length;
+        const cnt = FAULT_BASE[r.code] + extra;
+        return `<tr>
+            <td class="p-2.5 font-medium text-white">${escapeHtml(model)}</td>
+            <td class="p-2.5 font-mono text-amber-400">${r.code}</td>
+            <td class="p-2.5">${r.part}</td>
+            <td class="p-2.5 text-center font-bold ${extra ? 'text-rose-400' : ''}">${cnt}</td>
+            <td class="p-2.5 text-right"><span class="px-2 py-0.5 ${r.cls} rounded text-[10px]">${r.tag}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+/* ═══════════ VIEW TOGGLE ═══════════ */
+function toggleView(){
+    const op = document.getElementById('operator-view');
+    const dash = document.getElementById('dashboard-view');
+    const label = document.getElementById('view-toggle-label');
+    if(op.classList.contains('hidden')){
+        op.classList.remove('hidden'); op.classList.add('grid');
+        dash.classList.add('hidden');
+        label.innerText = '제조사 대시보드로 전환';
+    } else {
+        op.classList.add('hidden');
+        dash.classList.remove('hidden');
+        label.innerText = '운전원 모바일 뷰어로 전환';
+    }
+}
+
+/* ═══════════ OCR SIMULATION ═══════════ */
+function simulateOCR(){
+    const cam = document.getElementById('ocr-camera');
+    const banner = document.getElementById('ocr-simulation-banner');
+    const st = document.getElementById('ocr-cam-status');
+    cam.classList.remove('hidden');
+    banner.classList.add('hidden');
+    st.innerText = '계기판 프레임 인식 중…';
+    const btn = document.getElementById('ocr-btn');
+    btn.disabled = true; btn.classList.add('opacity-60');
+    scrollChat();
+    setTimeout(()=> st.innerText = '경고등 세그먼트 판독 중…', 800);
+    setTimeout(()=>{
+        st.innerText = 'ERR-402 추출 완료';
+        cam.classList.add('hidden');
+        banner.classList.remove('hidden');
+        setText('user-err-code', 'ERR-402');
+        ocrDone = true;
+        btn.disabled = false; btn.classList.remove('opacity-60');
+        scrollChat();
+        toast('OCR 스캔 완료 · 에러코드 <b>ERR-402</b> 자동 입력됨', 'success');
+    }, 1800);
+}
+function scrollChat(){ const c = document.getElementById('chat-body'); setTimeout(()=> c.scrollTop = c.scrollHeight, 60); }
+
+/* ═══════════ VISUAL VIDEO ═══════════ */
+function triggerVisual(){
+    const box = document.getElementById('mini-video-box');
+    if(!box.classList.contains('hidden')){ box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    document.getElementById('video-loading').classList.remove('hidden');
+    document.getElementById('video-player').classList.add('hidden');
+    scrollChat();
+    setTimeout(()=>{
+        document.getElementById('video-loading').classList.add('hidden');
+        document.getElementById('video-player').classList.remove('hidden');
+        toast('시각화 숏폼(3초)이 렌더링되었습니다.', 'info');
+    }, 1400);
+}
+function playShort(btn){
+    const bar = document.getElementById('video-progress');
+    btn.innerHTML = '<i class="fas fa-pause text-sm"></i>';
+    bar.style.width = '100%';
+    setTimeout(()=>{ btn.innerHTML = '<i class="fas fa-rotate-right text-sm"></i>'; bar.style.transition='none'; bar.style.width='0'; setTimeout(()=>bar.style.transition='',50); }, 3050);
+}
+
+/* ═══════════ COPY PARTS LIST ═══════════ */
+function copyPartsList(){
+    const E = registeredEquipment;
+    const rows = [...document.querySelectorAll('#parts-tbody tr')].map((tr,i)=>{
+        const td = tr.querySelectorAll('td');
+        return `${i+1}. ${td[0].innerText} | Part No. ${td[1].innerText} | 수량 ${td[2].innerText}EA`;
+    }).join('\n');
+    const order = `[장비 숏뉴얼 · 부품 발주서]\n장비: ${E.model} (${E.type})\n차대번호: ${E.chassis}\n엔진: ${E.engineMaker} ${E.engineModel}\n관련 에러: ERR-402 (유압유 과열)\n────────────────────\n${rows}\n────────────────────\n발주 요청일: 2026-08-30`;
+    const done = ()=> {
+        toast('발주서가 클립보드에 복사되었습니다.', 'success');
+        showModal({
+            title:'<i class="fas fa-clipboard-check text-emerald-400"></i> 발주서 복사 완료',
+            body:`<pre class="whitespace-pre-wrap bg-slate-950 border border-slate-800 rounded-lg p-3 text-[11px] text-slate-300 font-mono leading-relaxed">${order.replace(/</g,'&lt;')}</pre>`,
+            actions:[{label:'확인', primary:true, fn:'closeModal()'}]
+        });
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(order).then(done).catch(done);
+    } else { done(); }
+}
+
+/* ═══════════ FEEDBACK + AUTO TROUBLE TICKET ═══════════ */
+function recordFeedback(type){
+    if(feedbackLocked){ toast('이미 피드백이 접수되었습니다.', 'warn'); return; }
+    if(type === 'yes'){
+        feedbackLocked = true;
+        state.feedback = 'yes';
+        saveState();
+        refreshCounts();
+        document.getElementById('ticket-confirm-slot').innerHTML =
+            `<div class="bg-emerald-950/70 border border-emerald-500/40 rounded-xl p-3 text-emerald-200 text-[11px] flex items-center gap-2">
+                <i class="fas fa-circle-check"></i> 해결 완료 피드백이 제조사 CS 방어 지표(A/S 방어율)에 반영되었습니다.
+            </div>`;
+        scrollChat();
+        toast('👍 해결 완료 · AI 방어율 지표 반영', 'success');
+    } else {
+        showModal({
+            title:'<i class="fas fa-headset text-rose-400"></i> A/S 긴급 정비 요청서 생성',
+            body:`
+              <p class="mb-3 text-slate-400">아래 내용으로 <b class="text-white">Trouble Ticket</b>이 생성되어 제조사 대시보드로 즉시 접수됩니다.</p>
+              <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1.5 text-[11px] font-mono">
+                <div class="flex justify-between"><span class="text-slate-500">장비 모델</span><span class="text-white">${registeredEquipment.model}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">차대번호(KEY)</span><span class="text-blue-300">${registeredEquipment.chassis}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">엔진</span><span class="text-white">${registeredEquipment.engineMaker} ${registeredEquipment.engineModel}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">미해결 에러</span><span class="text-amber-400">${document.getElementById('user-err-code').innerText || 'ERR-402'} (유압유 과열)</span></div>
+                <div><span class="text-slate-500">시도한 조치</span><div class="text-slate-300 mt-1">· ${attemptedActions.join('<br>· ')}</div></div>
+              </div>`,
+            actions:[
+                {label:'취소', primary:false, fn:'closeModal()'},
+                {label:'<i class="fas fa-paper-plane mr-1"></i> 제조사로 즉시 접수', primary:true, fn:'submitTroubleTicket()'}
+            ]
+        });
+    }
+}
+
+function submitTroubleTicket(){
+    feedbackLocked = true;
+    closeModal();
+    const E = registeredEquipment;
+    const errCode = document.getElementById('user-err-code').innerText || 'ERR-402';
+    const now = new Date();
+    const seq = state.tickets.length + 1;
+    const id = `TK-20260830-${String(seq).padStart(3,'0')}`;
+    const hh = String(now.getHours()).padStart(2,'0'), mm = String(now.getMinutes()).padStart(2,'0');
+
+    state.tickets.push({
+        id, model:E.model, chassis:E.chassis, err:errCode,
+        attempted: `${attemptedActions.join(' · ')} 후 재발`,
+        time: `오늘 ${hh}:${mm}`, done:false, seed:false
+    });
+    state.feedback = 'no';
+    saveState();
+
+    document.getElementById('ticket-confirm-slot').innerHTML =
+        `<div class="bg-rose-950/70 border border-rose-500/40 rounded-xl p-3 text-rose-100 text-[11px] space-y-1">
+            <div class="font-bold flex items-center gap-1.5"><i class="fas fa-truck-medical"></i> A/S 긴급 정비 요청서 접수 완료</div>
+            <p class="text-slate-300">티켓 <span class="font-mono text-white">${id}</span> · 차대번호 <span class="font-mono text-rose-200">${escapeHtml(E.chassis)}</span> · ${escapeHtml(errCode)}</p>
+            <p class="text-slate-400">제조사 엔지니어 배정 대기 중입니다. 배정 시 등록된 현장 연락처로 알림이 발송됩니다.</p>
+        </div>`;
+    scrollChat();
+
+    renderTickets(id);
+    toast('👎 해결 불가 · A/S 긴급 요청서가 제조사 대시보드로 접수되었습니다.', 'error');
+}
+
+/* ═══════════ DISPATCH ENGINEER ═══════════ */
+function dispatchEngineer(id){
+    const t = state.tickets.find(x => x.id === id);
+    if(!t) return;
+    t.done = true;
+    saveState();
+    renderTickets();
+    toast(`${id} · 차대번호를 참조하여 인근 서비스센터 엔지니어에게 출동 지시가 전달되었습니다.`, 'success');
+}
+
+/* ═══════════ COUNTS / KPI ═══════════ */
+// 데모 기준값: 이번 달 누적 질문 342건 중 AI가 315건 자체 해결(92%), 27건은 미해결로 남음.
+const KPI_BASE_Q = 342, KPI_BASE_SOLVED = 315;
+
+function refreshCounts(){
+    // '긴급 A/S 접수 대기' = 아직 출동 지시가 안 내려간 티켓 수 (출동 지시는 대기 해소일 뿐 AI 해결이 아님)
+    const openTickets = state.tickets.filter(t => !t.done).length;
+    setText('ticket-count-badge', String(openTickets));
+    const emptyEl = document.getElementById('ticket-empty');
+    if(emptyEl) emptyEl.classList.toggle('hidden', openTickets > 0);
+
+    // AI 자체 해결률: 신규 A/S 티켓은 '질문 +1 / 미해결 +1'(AI가 못 풀어 사람이 감), 👍 피드백은 '질문 +1 / 해결 +1'
+    const newTickets = state.tickets.filter(t => !t.seed).length;
+    const thumbsUp   = state.feedback === 'yes' ? 1 : 0;
+    const q      = KPI_BASE_Q + newTickets + thumbsUp;
+    const solved = KPI_BASE_SOLVED + thumbsUp;
+    setText('kpi-questions', String(q));
+    setText('kpi-defense', String(Math.round(solved / q * 100)));
+    setText('kpi-defense-cnt', String(solved));
+}
+
+/* ═══════════ MULTI PDF UPLOAD ═══════════ */
+function openUploadModal(){
+    showModal({
+        title:'<i class="fas fa-file-arrow-up text-blue-400"></i> 신규 매뉴얼 PDF 다중 업로드',
+        body:`
+          <p class="mb-3 text-slate-400">현재 등록 장비 <b class="text-white">${registeredEquipment.model}</b> · 차대번호 <span class="font-mono text-blue-300">${registeredEquipment.chassis}</span> 에 매핑됩니다.</p>
+          <label id="drop-zone" class="block border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition-colors bg-slate-950">
+            <input type="file" id="pdf-input" accept="application/pdf" multiple class="hidden">
+            <i class="fas fa-cloud-arrow-up text-2xl text-blue-400"></i>
+            <p class="mt-2 text-slate-300 font-semibold">PDF 파일을 선택하세요 (여러 개 가능)</p>
+            <p class="text-[10px] text-slate-500 mt-1">.pdf · 최대 50MB / 파일</p>
+          </label>
+          <div id="upload-list" class="mt-3 space-y-1.5"></div>`,
+        actions:[
+            {label:'취소', primary:false, fn:'closeModal()'},
+            {label:'<i class="fas fa-database mr-1"></i> 벡터화 및 매핑 등록', primary:true, fn:'commitUpload()'}
+        ]
+    });
+    const input = document.getElementById('pdf-input');
+    input.addEventListener('change', ()=> renderUploadList(input.files));
+}
+let pendingFiles = [];
+function renderUploadList(files){
+    pendingFiles = [...files];
+    const list = document.getElementById('upload-list');
+    if(!pendingFiles.length){ list.innerHTML = ''; return; }
+    list.innerHTML = pendingFiles.map(f=>`
+        <div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-[11px]">
+            <span class="text-slate-300 truncate"><i class="far fa-file-pdf text-rose-400 mr-1.5"></i>${f.name}</span>
+            <span class="text-slate-500 shrink-0 ml-2">${(f.size/1024/1024).toFixed(1)} MB</span>
+        </div>`).join('');
+}
+function commitUpload(){
+    if(!pendingFiles.length){ toast('업로드할 PDF 파일을 선택하세요.', 'warn'); return; }
+    const names = pendingFiles.map(f => f.name);
+    state.extraFiles.push(...names);
+    saveState();
+    baseManualFiles();  // 라이브러리 재렌더
+    closeModal();
+    toast(`${names.length}개 PDF가 차대번호 <b>${escapeHtml(registeredEquipment.chassis)}</b> 에 매핑 · 벡터화 완료되었습니다.`, 'success');
+    pendingFiles = [];
+}
+// 현재 등록 장비 기준 기본 매뉴얼 2권 파일명 계산 후 라이브러리 재렌더
+function baseManualFiles(){
+    const E = registeredEquipment;
+    const slug = (E.model || 'model').toLowerCase().replace(/[^a-z0-9]+/g,'') || 'model';
+    const eslug = (E.engineModel || 'engine').toLowerCase().replace(/[^a-z0-9]+/g,'') || 'engine';
+    renderLibraryFiles([`${slug}_hydraulic_v2.pdf`, `${(E.engineMaker||'engine').toLowerCase()}_${eslug}_parts.pdf`]);
+}
+
+/* ═══════════ INIT (새로고침 시 상태 복원) ═══════════ */
+(function init(){
+    loadState();
+
+    if(state.equipment){
+        applyEquipment(state.equipment);
+        goToOperator();
+        // 이전 피드백 상태 복원
+        if(state.feedback === 'yes'){
+            feedbackLocked = true;
+            document.getElementById('ticket-confirm-slot').innerHTML =
+                `<div class="bg-emerald-950/70 border border-emerald-500/40 rounded-xl p-3 text-emerald-200 text-[11px] flex items-center gap-2">
+                    <i class="fas fa-circle-check"></i> 해결 완료 피드백이 제조사 CS 방어 지표(A/S 방어율)에 반영되었습니다.
+                </div>`;
+        } else if(state.feedback === 'no'){
+            feedbackLocked = true;
+            const last = state.tickets.filter(t => !t.seed).slice(-1)[0];
+            if(last){
+                document.getElementById('ticket-confirm-slot').innerHTML =
+                    `<div class="bg-rose-950/70 border border-rose-500/40 rounded-xl p-3 text-rose-100 text-[11px] space-y-1">
+                        <div class="font-bold flex items-center gap-1.5"><i class="fas fa-truck-medical"></i> A/S 긴급 정비 요청서 접수됨</div>
+                        <p class="text-slate-300">티켓 <span class="font-mono text-white">${last.id}</span> · 차대번호 <span class="font-mono text-rose-200">${escapeHtml(last.chassis)}</span> · ${escapeHtml(last.err)}</p>
+                    </div>`;
+            }
+        }
+    }
+    renderTickets();
+})();
+</script>
+</body>
+</html>
