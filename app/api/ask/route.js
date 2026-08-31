@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { buildContext, generateAnswer } from '@/lib/claude';
+import { buildContext, generateAnswer } from '@/lib/ai';
 import { handle } from '@/lib/handler';
 
 export const runtime = 'nodejs';

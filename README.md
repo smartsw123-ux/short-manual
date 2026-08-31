@@ -4,7 +4,7 @@
 
 - **Next.js 15** (App Router) · Vercel 배포
 - **Supabase** — Postgres(데이터) + Storage(PDF 파일)
-- **Claude API** — 업로드된 매뉴얼 PDF 를 근거로 구조화된 정비 가이드 생성
+- **Google Gemini (무료 등급)** — 업로드된 매뉴얼 PDF 를 근거로 구조화된 정비 가이드 생성
 - 로그인 없음 (오픈 접속, 서버 DB 공유)
 
 ---
@@ -21,11 +21,11 @@
    - `Project URL` → `SUPABASE_URL`
    - `service_role` `secret` 키 → `SUPABASE_SERVICE_ROLE_KEY`  ⚠️ 절대 공개 금지
 
-### 2. Anthropic (Claude) API 키
+### 2. Google Gemini API 키 (무료 · 카드 불필요)
 
-1. https://console.anthropic.com → **API Keys** → **Create Key**
-2. 값 복사 → `ANTHROPIC_API_KEY`
-3. 결제 수단 등록 필요 (사용량 과금 · 질문 1건당 대략 수십 원)
+1. https://aistudio.google.com/apikey → 구글 로그인 → **Create API key**
+2. 값 복사 → `GEMINI_API_KEY`
+3. 무료 등급: 분당 요청 제한이 있으나 테스트에는 충분
 
 ### 3. Vercel 환경변수
 
@@ -34,9 +34,9 @@ Vercel 프로젝트 **Settings > Environment Variables** 에 추가 (Production,
 | Key | Value |
 |---|---|
 | `SUPABASE_URL` | `https://xxxx.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | `eyJ...` (service_role) |
-| `ANTHROPIC_API_KEY` | `sk-ant-...` |
-| `ANTHROPIC_MODEL` | `claude-sonnet-5` *(선택)* |
+| `SUPABASE_SERVICE_ROLE_KEY` | `sb_secret_...` |
+| `GEMINI_API_KEY` | `AIza...` |
+| `GEMINI_MODEL` | `gemini-2.5-flash` *(선택)* |
 
 추가 후 **Deployments > 최신 배포 > Redeploy** 로 반영.
 
@@ -85,7 +85,7 @@ app/
     dashboard/          KPI · 고장로그 · 라이브러리
     health/             환경변수/스키마 점검
 lib/
-  supabase.js  claude.js  pdf.js
+  supabase.js  ai.js (Gemini)  pdf.js  handler.js
 supabase/schema.sql
 public/prototype.html   (구 정적 프로토타입 · 참고용)
 ```

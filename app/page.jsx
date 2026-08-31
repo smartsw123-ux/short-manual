@@ -169,7 +169,7 @@ function SetupBanner({ health }) {
       </p>
       <ul className="space-y-1 text-amber-200/90 list-disc list-inside">
         <li>Supabase 환경변수: {health.supabase_env ? '✅' : '❌ SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 를 Vercel 에 추가'}</li>
-        <li>Anthropic 키: {health.anthropic_env ? '✅' : '❌ ANTHROPIC_API_KEY 를 Vercel 에 추가'}</li>
+        <li>Gemini 키: {health.ai_env ? '✅' : '❌ GEMINI_API_KEY 를 Vercel 에 추가'}</li>
         <li>
           DB 스키마: {health.schema_ok ? '✅' : `❌ supabase/schema.sql 을 Supabase SQL Editor 에서 실행${health.schema_error ? ` (${health.schema_error})` : ''}`}
         </li>

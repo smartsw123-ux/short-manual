@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseConfigured, getSupabase } from '@/lib/supabase';
-import { claudeConfigured } from '@/lib/claude';
+import { aiConfigured } from '@/lib/ai';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
   const out = {
     supabase_env: supabaseConfigured(),
-    anthropic_env: claudeConfigured(),
+    ai_env: aiConfigured(),
     db_ok: false,
     schema_ok: false,
   };
@@ -24,6 +24,6 @@ export async function GET() {
     }
   }
 
-  out.ready = out.supabase_env && out.anthropic_env && out.schema_ok;
+  out.ready = out.supabase_env && out.ai_env && out.schema_ok;
   return NextResponse.json(out);
 }
